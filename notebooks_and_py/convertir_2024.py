@@ -1,8 +1,7 @@
 import pandas as pd
 
-carpeta = "data/raw/Siniestros_viales/"
+carpeta = "data/raw/Siniestros_viales/SIGAT_ANUARIO_2024.xlsx"
 
-hojas = pd.read_excel(carpeta + "SIGAT_ANUARIO_2024.xlsx", sheet_name=None)
+df = pd.read_excel(carpeta, sheet_name=0)
 
-for nombre, df in hojas.items():
-    df.to_csv(f"{carpeta}SIGAT_ANUARIO_2024_{nombre}.csv.gz", index=False)
+df.to_csv(carpeta.replace(".xlsx", ".csv.gz"), index=False)
