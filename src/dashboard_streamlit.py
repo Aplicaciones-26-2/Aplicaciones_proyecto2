@@ -108,13 +108,12 @@ col1.metric("Personas muertas o heridas", n_filtradas_txt)
 col1.caption("Aproximadamente {} personas por día".format(por_dia_txt))
 col2.metric("Víctimas a 300 m o menos de una cámara", "{} %".format(pct_cerca_txt))
 col3.metric("Puntos críticos sin cámara", "{} de 50".format(len(puntos_sin)))
-col4.metric("Motociclistas en esos puntos", "{} %".format(pct_motos_txt),
-            delta="{} pts vs. toda la ciudad".format(dif_motos_txt), delta_color="off")
+col4.metric("Motociclistas en esos puntos", "{} %".format(pct_motos_txt))
 
 tab_resumen.subheader("Mensajes clave")
 tab_resumen.write("1. **{} %** de las víctimas ocurrió a menos de 300 m de una cámara. El {} % restante ocurrió fuera de la red actual.".format(pct_cerca_txt, pct_lejos_txt))
 tab_resumen.write("2. **{} de los 50** puntos con más víctimas no tienen una cámara cercana. En ellos hay {} víctimas en el período seleccionado.".format(len(puntos_sin), n_vic_sin_txt))
-tab_resumen.write("3. En esos puntos, **{} %** de las víctimas son motociclistas (toda la ciudad: {} %).".format(pct_motos_txt, pct_motos_ciudad_txt))
+tab_resumen.write("3. En esos puntos, **{} %** de las víctimas son motociclistas (toda la ciudad: {} %, una diferencia de {} puntos).".format(pct_motos_txt, pct_motos_ciudad_txt, dif_motos_txt))
 
 g1 = pd.DataFrame([["≤ 300 m", pct_cerca], ["> 300 m", pct_lejos]],
                   columns=["zona", "pct"])
@@ -134,25 +133,17 @@ tabla_prioridad.columns = ["Puesto", "Ubicación", "Localidad", "Víctimas 2019-
 tab_resumen.dataframe(tabla_prioridad, hide_index=True, width="stretch")
 
 mapa_puntos = top50.copy()
-mapa_puntos["tipo"] = np.where(mapa_puntos[cuadros_dist] <= 300, "Punto crítico con cámara", "Punto crítico sin cámara")
-mapa_puntos["tamanio"] = mapa_puntos[cuadros_nvict]
-mapa_puntos = mapa_puntos[[cuadros_lat, cuadros_lon, cuadros_dir, "tipo", "tamanio"]]
-mapa_puntos.columns = ["lat", "lon", "lugar", "tipo", "tamanio"]
+mapa_puntos["color"] = np.where(mapa_puntos[cuadros_dist] <= 300, "#2CA02C", "#D62728")
+mapa_puntos["tamanio"] = mapa_puntos[cuadros_nvict] * 0.7
+mapa_puntos = mapa_puntos[[cuadros_lat, cuadros_lon, "color", "tamanio"]]
+mapa_puntos.columns = ["lat", "lon", "color", "tamanio"]
 
-mapa_camaras = camaras[[camaras_lat, camaras_lon, camaras_dir]].copy()
-mapa_camaras.columns = ["lat", "lon", "lugar"]
-mapa_camaras["tipo"] = "Cámara"
-mapa_camaras["tamanio"] = 60
+mapa_camaras = camaras[[camaras_lat, camaras_lon]].copy()
+mapa_camaras.columns = ["lat", "lon"]
+mapa_camaras["color"] = "#138AD9"
+mapa_camaras["tamanio"] = 70
 
 mapa = pd.concat([mapa_puntos, mapa_camaras], ignore_index=True)
-
-fig_mapa = px.scatter_map(mapa, lat="lat", lon="lon", color="tipo", size="tamanio", size_max=18,
-                          hover_name="lugar", zoom=10, height=600, map_style="carto-positron",
-                          color_discrete_map={"Punto crítico sin cámara": "#D62728",
-                                              "Punto crítico con cámara": "#2CA02C",
-                                              "Cámara": "#1F77B4"},
-                          title="Los 50 puntos con más víctimas y las cámaras de la ciudad")
-fig_mapa.update_layout(title_x=0.5, legend_title_text="")
 
 g2 = victimas_camaras_filtradas[victimas_camaras_cuadro].value_counts().head(10).reset_index()
 g2.columns = [cuadros_nombre, cuadros_nvict]
@@ -166,7 +157,9 @@ fig2 = px.bar(g2, x=cuadros_nvict, y="Punto", color="Cámara", orientation="h",
 fig2.update_yaxes(autorange="reversed")
 fig2.update_layout(title_x=0.5, xaxis_title="Víctimas", yaxis_title="", separators=",.")
 
-tab_puntos.plotly_chart(fig_mapa, width="stretch")
+tab_puntos.subheader("Los 50 puntos con más víctimas y las cámaras de la ciudad")
+tab_puntos.write(":red[●] Punto crítico sin cámara · :green[●] Punto crítico con cámara · :blue[●] Cámara (el tamaño del punto crítico crece con las víctimas)")
+tab_puntos.map(mapa, latitude="lat", longitude="lon", color="color", size="tamanio")
 tab_puntos.plotly_chart(fig2, width="stretch")
 
 g3a = vic_sin[victimas_camaras_tipo].value_counts(normalize=True).mul(100).reset_index()
