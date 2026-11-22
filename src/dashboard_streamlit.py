@@ -131,6 +131,7 @@ tab_resumen.write("Priorizar la evaluación de cámaras en los puntos sin cobert
 tabla_prioridad = puntos_sin.head(5)[[cuadros_puesto, cuadros_dir, cuadros_loc, cuadros_nvict, cuadros_muertos]].copy()
 tabla_prioridad.columns = ["Puesto", "Ubicación", "Localidad", "Víctimas 2019-2025", "Muertos"]
 tab_resumen.dataframe(tabla_prioridad, hide_index=True, width="stretch")
+tab_resumen.write("El puesto 2 (Autopista Sur con carrera 76) tiene una cámara a 295 m y por eso no aparece en la tabla.")
 
 mapa_puntos = top50.copy()
 mapa_puntos["color"] = np.where(mapa_puntos[cuadros_dist] <= 300, "#2CA02C", "#D62728")
