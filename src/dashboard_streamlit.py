@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 
-st.set_page_config(page_title="Víctimas viales y cámaras en Bogotá", layout="wide")
+st.set_page_config(page_title="¿Dónde poner las próximas Cámaras Salvavidas?", layout="wide")
 
 RUTA = "data/processed/"
 RADIO = 300
@@ -59,7 +59,7 @@ victimas_camaras_filtradas = victimas_camaras_tipo_franja[
 
 st.sidebar.write(f"Víctimas seleccionadas: **{len(victimas_camaras_filtradas):,}** de {len(victimas_camaras):,}")
 
-st.title("Víctimas viales y cámaras de velocidad en Bogotá")
+st.title("¿Dónde poner las próximas Cámaras Salvavidas?")
 
 if len(victimas_camaras_filtradas) == 0:
     st.warning("No hay víctimas con los filtros elegidos. Amplía el rango de años o agrega tipos y franjas.")
