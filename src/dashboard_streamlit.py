@@ -6,6 +6,7 @@ import plotly.express as px
 st.set_page_config(page_title="Víctimas viales y cámaras en Bogotá", layout="wide")
 
 RUTA = "data/processed/"
+RADIO = 300
 TAMANIO_CUADRO = 0.0027
 
 victimas_camaras_anio = "AA_Acc"
@@ -34,10 +35,6 @@ victimas_camaras[victimas_camaras_cuadro] = fila.astype(str) + "_" + columna.ast
 
 victimas_camaras_2019 = victimas_camaras[victimas_camaras[victimas_camaras_anio] >= 2019]
 
-st.sidebar.title("Opciones")
-RADIO = st.sidebar.radio("Radio de alcance de la cámara (m)", [300, 500])
-st.sidebar.caption("300 m es aproximadamente el alcance de una cámara de velocidad. Con 500 m se comparan los resultados.")
-
 pct_cerca = (victimas_camaras[victimas_camaras_dist] <= RADIO).mean() * 100
 pct_lejos = 100 - pct_cerca
 
@@ -49,6 +46,7 @@ pct_motos = (vic_sin[victimas_camaras_tipo] == "MOTOCICLISTA").mean() * 100
 st.title("Víctimas viales y cámaras de velocidad en Bogotá")
 st.write("Este dashboard muestra las gráficas que sustentan los dos hallazgos del proyecto.")
 st.write("**Período:** víctimas de 2019 a 2025 (la gráfica 6 usa todos los años para comparar con el promedio anterior).")
+st.write(f"**Radio de la cámara:** todas las gráficas usan {RADIO} m, que es aproximadamente el alcance de una cámara de velocidad. La comparación con 500 m está aparte, en su propia pestaña.")
 st.write("**Distancia:** se mide contra las ubicaciones actuales de las cámaras, porque `camaras.csv` no trae fecha de instalación.")
 
 tab_resumen, tab_puntos, tab_sin, tab_loc, tab_tiempo, tab_radio, tab_limites = st.tabs([
@@ -172,7 +170,19 @@ for r in radios:
 
 comparacion = pd.DataFrame(filas, columns=["radio", "pct_cerca", "puntos_sin_camara", "pct_motos"])
 
-tab_radio.write("Con 500 m el porcentaje de víctimas cerca de una cámara aumenta y bajan los puntos sin cámara, pero la conclusión se mantiene.")
+tab_radio.write("Se repiten los tres números clave con cada radio. Esta comparación no cambia las demás gráficas, que siempre usan 300 m.")
+
+col8, col9 = tab_radio.columns(2)
+col8.subheader("Radio de 300 m")
+col8.metric("Víctimas cerca de una cámara", f"{comparacion.loc[0, 'pct_cerca']:.1f}%")
+col8.metric("Puntos críticos sin cámara (de 50)", int(comparacion.loc[0, "puntos_sin_camara"]))
+col8.metric("Motociclistas en esos puntos", f"{comparacion.loc[0, 'pct_motos']:.1f}%")
+col9.subheader("Radio de 500 m")
+col9.metric("Víctimas cerca de una cámara", f"{comparacion.loc[1, 'pct_cerca']:.1f}%")
+col9.metric("Puntos críticos sin cámara (de 50)", int(comparacion.loc[1, "puntos_sin_camara"]))
+col9.metric("Motociclistas en esos puntos", f"{comparacion.loc[1, 'pct_motos']:.1f}%")
+
+tab_radio.write("Con 500 m el porcentaje de víctimas cerca de una cámara aumenta y bajan los puntos sin cámara, pero la conclusión se mantiene: la mayoría de los puntos críticos sigue sin cámara y cerca de la mitad de las víctimas son motociclistas.")
 tab_radio.dataframe(comparacion.round(1), hide_index=True)
 
 tab_limites.write("- `camaras.csv` no tiene fechas de instalación, así que no se puede saber qué cámaras existían en cada año. Incluye además 9 cámaras de agosto de 2026.")
