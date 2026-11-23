@@ -178,7 +178,7 @@ Todos los indicadores del dashboard se recalculan con los filtros (años, tipo d
 
 - `data/raw`: datos originales, sin cambios.
 - `data/processed`: tablas limpias que salen de los notebooks.
-- `notebooks`: el análisis, en orden del 01 al 08.
+- `notebooks`: el análisis, en orden del 01 al 07.
 - `src`: el dashboard (`dashboard_streamlit.py`) y el script que pasa el Excel 2024 a `.csv.gz`.
 - `outputs`: carpetas para gráficas y tablas (por ahora vacías; las gráficas están en el notebook 07 y en el dashboard).
 - `reports`: la presentación.
@@ -189,7 +189,7 @@ El Excel 2024 del SIGAT pesa 121 MB y GitHub no deja subir archivos de más de 1
 
 1. `git clone https://github.com/Aplicaciones-26-2/Aplicaciones_proyecto2.git`
 2. `pip install -r requirements.txt` (Python 3.12 o más reciente)
-3. Correr los notebooks en orden, del 01 al 08. El 01b no hace falta: la capa de cámaras ya está guardada.
+3. Correr los notebooks en orden, del 01 al 07. El 01b no hace falta: la capa de cámaras ya está guardada.
 4. Desde la carpeta principal del repo: `streamlit run src/dashboard_streamlit.py`
 
 ---
