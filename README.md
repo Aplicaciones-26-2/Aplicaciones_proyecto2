@@ -1,6 +1,6 @@
 # ¿Dónde poner las próximas Cámaras Salvavidas?
 
-Proyecto 2 · DATA-1002 Aplicaciones en Ciencia de Datos · Universidad de los Andes · 2026-2
+Proyecto 2 │ DATA-1002 Aplicaciones en Ciencia de Datos │ Universidad de los Andes │ 2026-2
 
 **Miembros del grupo 8:** 
 
