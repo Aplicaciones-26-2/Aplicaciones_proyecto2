@@ -4,3 +4,6 @@ numpy==2.5.4
 plotly==7.1.0
 matplotlib
 nbformat
+openpyxl
+requests
+ipykernel

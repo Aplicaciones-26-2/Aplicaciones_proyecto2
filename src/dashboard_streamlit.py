@@ -90,14 +90,18 @@ por_dia_txt = "{:.0f}".format(len(victimas_camaras_filtradas) / dias)
 vic_puntos = victimas_camaras_filtradas.copy()
 vic_puntos["muerto"] = vic_puntos["Gravedad_Indicador_30d"] == "MUERTO"
 
+vic_puntos["cerca_oficial"] = (vic_puntos[victimas_camaras_dist] <= 300) & (~vic_puntos["id_camara"].str.startswith("NUEVA"))
+
 puntos = vic_puntos.groupby(victimas_camaras_cuadro).agg(
     victimas=(victimas_camaras_dist, "count"),
     muertos=("muerto", "sum"),
     distancia_min=(victimas_camaras_dist, "min"),
+    con_oficial=("cerca_oficial", "max"),
     latitud=(victimas_camaras_lat, "mean"),
     longitud=(victimas_camaras_lon, "mean"),
 ).reset_index()
-puntos = puntos.sort_values(cuadros_nvict, ascending=False).reset_index(drop=True)
+
+puntos = puntos.sort_values([cuadros_nvict, cuadros_muertos, cuadros_nombre], ascending=[False, False, True]).reset_index(drop=True)
 puntos[cuadros_puesto] = puntos.index + 1
 
 top50 = puntos.head(50)
@@ -133,7 +137,7 @@ col3.metric("Puntos críticos sin cámara", "{} de 50".format(len(puntos_sin)))
 col4.metric("Motociclistas en esos puntos", "{} %".format(pct_motos_txt))
 
 tab_resumen.subheader("Mensajes clave")
-tab_resumen.write("1. **{} %** de las víctimas ocurrió a menos de 300 m de una cámara. El {} % restante ocurrió fuera de la red actual.".format(pct_cerca_txt, pct_lejos_txt))
+tab_resumen.write("1. **{} %** de las víctimas ocurrió a 300 m o menos de una cámara. El {} % restante ocurrió fuera de la red actual.".format(pct_cerca_txt, pct_lejos_txt))
 tab_resumen.write("2. **{} de los 50** puntos con más víctimas no tienen una cámara cercana. En ellos hay {} víctimas en el período seleccionado.".format(len(puntos_sin), n_vic_sin_txt))
 tab_resumen.write("3. En esos puntos, **{} %** de las víctimas son motociclistas (toda la ciudad: {} %, una diferencia de {} puntos).".format(pct_motos_txt, pct_motos_ciudad_txt, dif_motos_txt))
 
@@ -162,7 +166,8 @@ mapa_puntos.columns = ["lat", "lon", "color", "tamanio"]
 
 mapa_camaras = camaras[[camaras_lat, camaras_lon]].copy()
 mapa_camaras.columns = ["lat", "lon"]
-mapa_camaras["color"] = "#138AD9"
+# Las cámaras de la capa oficial en azul y las 18 nuevas de 2026 en naranja
+mapa_camaras["color"] = np.where(camaras["id_camara"].str.startswith("NUEVA"), "#FF8C00", "#138AD9")
 mapa_camaras["tamanio"] = 70
 
 mapa = pd.concat([mapa_puntos, mapa_camaras], ignore_index=True)
@@ -174,13 +179,16 @@ g2["Punto"] = g2[cuadros_puesto].astype(str) + ". " + g2[cuadros_dir]
 fig2 = px.bar(g2, x=cuadros_nvict, y="Punto", color="Cámara", orientation="h",
               color_discrete_map={"Con cámara": "#2CA02C", "Sin cámara": "#D62728"},
               category_orders={"Punto": g2["Punto"].tolist()},
-              title="10 puntos con más víctimas")
+              title="{} de los 10 puntos con más víctimas no tienen cámara".format((g2["Cámara"] == "Sin cámara").sum()))
 fig2.update_yaxes(autorange="reversed")
 fig2.update_layout(title_x=0.5, xaxis_title="Víctimas", yaxis_title="", separators=",.")
 
-tab_puntos.subheader("Los 50 puntos con más víctimas y las cámaras de la ciudad")
-tab_puntos.write(":red[●] Punto crítico sin cámara · :green[●] Punto crítico con cámara · :blue[●] Cámara (el tamaño del punto crítico crece con las víctimas)")
+tab_puntos.subheader("{} de los 50 puntos con más víctimas no tienen una cámara a 300 m o menos".format(len(puntos_sin)))
+tab_puntos.write(":red[●] Punto crítico sin cámara · :green[●] Punto crítico con cámara · :blue[●] Cámara de la capa oficial · :orange[●] Cámara nueva de 2026 (el tamaño del punto crítico crece con las víctimas)")
 tab_puntos.map(mapa, latitude="lat", longitude="lon", color="color", size="tamanio")
+# Cuántos puntos críticos quedarían sin cámara si no contamos las de 2026
+n_sin_oficial = int((~top50["con_oficial"]).sum())
+tab_puntos.write("Sin las 18 cámaras de 2026 serían **{}** puntos críticos sin cámara; con ellas son **{}**.".format(n_sin_oficial, len(puntos_sin)))
 tab_puntos.plotly_chart(fig2, width="stretch")
 
 g3a = vic_sin[victimas_camaras_tipo].value_counts(normalize=True).mul(100).reset_index()
@@ -194,8 +202,10 @@ fig3a.update_yaxes(autorange="reversed")
 g3b = vic_sin[victimas_camaras_franja].value_counts(normalize=True).reindex(orden).mul(100).reset_index()
 g3b.columns = ["franja", "pct"]
 
+pct_noche = g3b[g3b["franja"].isin(["Noche (18-23)", "Madrugada (0-5)"])]["pct"].sum()
+pct_noche_txt = "{:.1f}".format(pct_noche).replace(".", ",")
 fig3b = px.bar(g3b, x="franja", y="pct", text_auto=".1f",
-               title="Cuándo: franja horaria")
+               title="Cuándo: {} % fue de noche o de madrugada".format(pct_noche_txt))
 fig3b.update_layout(yaxis_title="% de las víctimas", title_x=0.5, xaxis_title="", separators=",.")
 
 tab_perfil.write("Puntos críticos sin cámara: **{} de 50** · Víctimas en esos puntos: **{}**".format(len(puntos_sin), n_vic_sin_txt))
@@ -210,24 +220,27 @@ loc_top_tasa_txt = "{:.1f}".format(loc_top[localidades_tasa]).replace(".", ",")
 n_loc_sin_camara = int((localidades[localidades_cam] == 0).sum())
 
 fig4a = px.bar(g4, x=localidades_tasa, y=localidades_nombre, orientation="h",
-               title="Víctimas por 100.000 habitantes")
+               title="{} tiene la tasa más alta: {} por 100.000 habitantes".format(loc_top[localidades_nombre].title(), loc_top_tasa_txt))
 fig4a.update_yaxes(autorange="reversed")
-fig4a.update_layout(yaxis_title="", xaxis_title="Víctimas por 100.000 habitantes",
+fig4a.update_layout(yaxis_title="", xaxis_title="Víctimas por 100.000 habitantes al año",
                     title_x=0.5, height=600, separators=",.")
 
 fig4b = px.bar(g4, x=localidades_cam, y=localidades_nombre, orientation="h",
-               title="Cámaras por localidad")
+               title="{} localidades no tienen ninguna cámara".format(n_loc_sin_camara))
 fig4b.update_yaxes(autorange="reversed")
 fig4b.update_layout(yaxis_title="", xaxis_title="Cámaras", title_x=0.5, height=600)
 
 tab_loc.write("**{}** tiene la tasa más alta ({} víctimas por 100.000 habitantes al año) y {} cámaras. {} localidades no tienen ninguna cámara.".format(
     loc_top[localidades_nombre].title(), loc_top_tasa_txt, int(loc_top[localidades_cam]), n_loc_sin_camara))
+tab_loc.caption("Esta pestaña usa todas las víctimas de 2019 a 2025 y no cambia con los filtros.")
 col7, col8 = tab_loc.columns(2)
 col7.plotly_chart(fig4a, width="stretch")
 col8.plotly_chart(fig4b, width="stretch")
 
 g5 = victimas_camaras_tipo_franja.copy()
-g5["zona"] = np.where(g5[victimas_camaras_dist] <= 300, "Cerca de una cámara", "Resto de la ciudad")
+# En el antes y después no contamos las cámaras de 2026 porque entre 2015 y 2025 todavía no existían
+nueva = g5["id_camara"].str.startswith("NUEVA")
+g5["zona"] = np.where((g5[victimas_camaras_dist] <= 300) & (~nueva), "Cerca de una cámara", "Resto de la ciudad")
 
 por_anio = g5.groupby([victimas_camaras_anio, "zona"]).size().unstack(fill_value=0)
 
@@ -236,12 +249,14 @@ despues = por_anio[por_anio.index >= 2022].mean()
 cambio = (despues - base) / base * 100
 cambio_cerca_txt = "{:.1f}".format(cambio["Cerca de una cámara"]).replace(".", ",")
 cambio_resto_txt = "{:.1f}".format(cambio["Resto de la ciudad"]).replace(".", ",")
+cambio_cerca_signo = "{:+.1f}".format(cambio["Cerca de una cámara"]).replace(".", ",")
+cambio_resto_signo = "{:+.1f}".format(cambio["Resto de la ciudad"]).replace(".", ",")
 
 indice = (por_anio / base * 100).reset_index()
 indice = indice.melt(id_vars=victimas_camaras_anio, var_name="zona", value_name="indice")
 
 fig5 = px.line(indice, x=victimas_camaras_anio, y="indice", color="zona", markers=True,
-               title="Evolución de las víctimas (índice, promedio 2015-2018 = 100)")
+               title="Cambio frente a 2015-2018: {} % cerca de las cámaras y {} % en el resto".format(cambio_cerca_signo, cambio_resto_signo))
 fig5.update_layout(yaxis_title="Índice (promedio 2015-2018 = 100)", xaxis_title="Año", title_x=0.5,
                    legend_title_text="", separators=",.")
 fig5.update_xaxes(dtick=1)
@@ -266,7 +281,7 @@ fig6.update_xaxes(dtick=1)
 tab_tiempo.write("Lectura descriptiva: no mide el efecto de las cámaras. Esta pestaña no usa el filtro de período, porque necesita los años de antes de las cámaras (2015-2018).")
 tab_tiempo.write("Entre 2015-2018 y 2022-2025 las víctimas cambiaron **{} %** cerca de las cámaras y **{} %** en el resto de la ciudad.".format(cambio_cerca_txt, cambio_resto_txt))
 tab_tiempo.plotly_chart(fig5, width="stretch")
-tab_tiempo.write("Promedio anual: **{}** víctimas en 2015-2018 y **{}** en 2019-2025.".format(promedio_antes_txt, promedio_despues_txt))
+tab_tiempo.write("Promedio anual: **{}** víctimas en 2015-2018 y **{}** en 2019-2025. Ojo: en 2015-2018 faltan más siniestros sin coordenadas, por eso esos años se ven más bajos de lo que fueron.".format(promedio_antes_txt, promedio_despues_txt))
 tab_tiempo.plotly_chart(fig6, width="stretch")
 
 radios = [300, 500]
