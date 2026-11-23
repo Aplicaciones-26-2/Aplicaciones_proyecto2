@@ -37,7 +37,6 @@ camaras_dir = "direccion"
 orden = ["Madrugada (0-5)", "Mañana (6-11)", "Tarde (12-17)", "Noche (18-23)"]
 
 victimas_camaras = pd.read_csv(RUTA + "victimas_camaras.csv.gz")
-cuadros = pd.read_csv(RUTA + "cuadros.csv")
 localidades = pd.read_csv(RUTA + "localidades.csv")
 camaras = pd.read_csv(RUTA + "camaras.csv")
 
@@ -47,12 +46,12 @@ victimas_camaras[victimas_camaras_cuadro] = fila.astype(str) + "_" + columna.ast
 
 victimas_camaras[victimas_camaras_anio] = victimas_camaras[victimas_camaras_anio].astype(int)
 
-anio_min = int(victimas_camaras[victimas_camaras_anio].min())
+anio_min = 2019
 anio_max = int(victimas_camaras[victimas_camaras_anio].max())
 tipos = sorted(victimas_camaras[victimas_camaras_tipo].dropna().unique())
 
 st.sidebar.title("Filtros")
-anios = st.sidebar.slider("Período", anio_min, anio_max, (2019, anio_max))
+anios = st.sidebar.slider("Período", anio_min, anio_max, (anio_min, anio_max))
 tipos_sel = st.sidebar.multiselect("Tipo de persona afectada", tipos, default=tipos)
 franjas_sel = st.sidebar.multiselect("Franja horaria", orden, default=orden)
 
@@ -87,7 +86,30 @@ pct_lejos_txt = "{:.1f}".format(pct_lejos).replace(".", ",")
 dias = (anios[1] - anios[0] + 1) * 365.25
 por_dia_txt = "{:.0f}".format(len(victimas_camaras_filtradas) / dias)
 
-top50 = cuadros.head(50)
+# Puntos críticos
+vic_puntos = victimas_camaras_filtradas.copy()
+vic_puntos["muerto"] = vic_puntos["Gravedad_Indicador_30d"] == "MUERTO"
+
+puntos = vic_puntos.groupby(victimas_camaras_cuadro).agg(
+    victimas=(victimas_camaras_dist, "count"),
+    muertos=("muerto", "sum"),
+    distancia_min=(victimas_camaras_dist, "min"),
+    latitud=(victimas_camaras_lat, "mean"),
+    longitud=(victimas_camaras_lon, "mean"),
+).reset_index()
+puntos = puntos.sort_values(cuadros_nvict, ascending=False).reset_index(drop=True)
+puntos[cuadros_puesto] = puntos.index + 1
+
+top50 = puntos.head(50)
+
+# Dirección y localidad más comunes
+en_top50 = vic_puntos[vic_puntos[victimas_camaras_cuadro].isin(top50[cuadros_nombre])]
+nombres = en_top50.groupby(victimas_camaras_cuadro).agg(
+    direccion=("Direccion", lambda x: x.mode()[0]),
+    localidad=("Localidad", lambda x: x.mode()[0]),
+).reset_index()
+top50 = top50.merge(nombres, on=cuadros_nombre, how="left", validate="1:1")
+
 puntos_sin = top50[top50[cuadros_dist] > 300]
 vic_sin = victimas_camaras_filtradas[victimas_camaras_filtradas[victimas_camaras_cuadro].isin(puntos_sin[cuadros_nombre])]
 n_vic_sin_txt = "{:,}".format(len(vic_sin)).replace(",", ".")
@@ -129,7 +151,7 @@ tab_resumen.subheader("Siguiente paso propuesto")
 tab_resumen.write("Priorizar la evaluación de cámaras en los puntos sin cobertura con más víctimas:")
 
 tabla_prioridad = puntos_sin.head(5)[[cuadros_puesto, cuadros_dir, cuadros_loc, cuadros_nvict, cuadros_muertos]].copy()
-tabla_prioridad.columns = ["Puesto", "Ubicación", "Localidad", "Víctimas 2019-2025", "Muertos"]
+tabla_prioridad.columns = ["Puesto", "Ubicación", "Localidad", "Víctimas", "Muertos"]
 tab_resumen.dataframe(tabla_prioridad, hide_index=True, width="stretch")
 
 mapa_puntos = top50.copy()
@@ -145,14 +167,13 @@ mapa_camaras["tamanio"] = 70
 
 mapa = pd.concat([mapa_puntos, mapa_camaras], ignore_index=True)
 
-g2 = victimas_camaras_filtradas[victimas_camaras_cuadro].value_counts().head(10).reset_index()
-g2.columns = [cuadros_nombre, cuadros_nvict]
-g2 = g2.merge(cuadros[[cuadros_nombre, cuadros_dist, cuadros_dir, cuadros_puesto]], on=cuadros_nombre, how="left")
+g2 = top50.head(10).copy()
 g2["Cámara"] = np.where(g2[cuadros_dist] <= 300, "Con cámara", "Sin cámara")
 g2["Punto"] = g2[cuadros_puesto].astype(str) + ". " + g2[cuadros_dir]
 
 fig2 = px.bar(g2, x=cuadros_nvict, y="Punto", color="Cámara", orientation="h",
               color_discrete_map={"Con cámara": "#2CA02C", "Sin cámara": "#D62728"},
+              category_orders={"Punto": g2["Punto"].tolist()},
               title="10 puntos con más víctimas")
 fig2.update_yaxes(autorange="reversed")
 fig2.update_layout(title_x=0.5, xaxis_title="Víctimas", yaxis_title="", separators=",.")
@@ -174,7 +195,7 @@ g3b = vic_sin[victimas_camaras_franja].value_counts(normalize=True).reindex(orde
 g3b.columns = ["franja", "pct"]
 
 fig3b = px.bar(g3b, x="franja", y="pct", text_auto=".1f",
-               title="Cuándo: franja horaria de las víctimas")
+               title="Cuándo: franja horaria")
 fig3b.update_layout(yaxis_title="% de las víctimas", title_x=0.5, xaxis_title="", separators=",.")
 
 tab_perfil.write("Puntos críticos sin cámara: **{} de 50** · Víctimas en esos puntos: **{}**".format(len(puntos_sin), n_vic_sin_txt))
@@ -189,7 +210,7 @@ loc_top_tasa_txt = "{:.1f}".format(loc_top[localidades_tasa]).replace(".", ",")
 n_loc_sin_camara = int((localidades[localidades_cam] == 0).sum())
 
 fig4a = px.bar(g4, x=localidades_tasa, y=localidades_nombre, orientation="h",
-               title="Víctimas por 100.000 habitantes al año")
+               title="Víctimas por 100.000 habitantes")
 fig4a.update_yaxes(autorange="reversed")
 fig4a.update_layout(yaxis_title="", xaxis_title="Víctimas por 100.000 habitantes",
                     title_x=0.5, height=600, separators=",.")
@@ -205,19 +226,23 @@ col7, col8 = tab_loc.columns(2)
 col7.plotly_chart(fig4a, width="stretch")
 col8.plotly_chart(fig4b, width="stretch")
 
-g5 = victimas_camaras_filtradas.copy()
+g5 = victimas_camaras_tipo_franja.copy()
 g5["zona"] = np.where(g5[victimas_camaras_dist] <= 300, "Cerca de una cámara", "Resto de la ciudad")
 
 por_anio = g5.groupby([victimas_camaras_anio, "zona"]).size().unstack(fill_value=0)
-por_anio = por_anio.reindex(range(anios[0], anios[1] + 1), fill_value=0)
 
-base = por_anio.loc[anios[0]].replace(0, np.nan)
+base = por_anio[por_anio.index <= 2018].mean().replace(0, np.nan)
+despues = por_anio[por_anio.index >= 2022].mean()
+cambio = (despues - base) / base * 100
+cambio_cerca_txt = "{:.1f}".format(cambio["Cerca de una cámara"]).replace(".", ",")
+cambio_resto_txt = "{:.1f}".format(cambio["Resto de la ciudad"]).replace(".", ",")
+
 indice = (por_anio / base * 100).reset_index()
 indice = indice.melt(id_vars=victimas_camaras_anio, var_name="zona", value_name="indice")
 
 fig5 = px.line(indice, x=victimas_camaras_anio, y="indice", color="zona", markers=True,
-               title="Evolución de las víctimas (índice, {} = 100)".format(anios[0]))
-fig5.update_layout(yaxis_title="Índice ({} = 100)".format(anios[0]), xaxis_title="Año", title_x=0.5,
+               title="Evolución de las víctimas (índice, promedio 2015-2018 = 100)")
+fig5.update_layout(yaxis_title="Índice (promedio 2015-2018 = 100)", xaxis_title="Año", title_x=0.5,
                    legend_title_text="", separators=",.")
 fig5.update_xaxes(dtick=1)
 fig5.add_hline(y=100, line_dash="dash", line_color="gray")
@@ -233,12 +258,13 @@ promedio_despues = por_anio_total[por_anio_total["anio"] >= 2019]["victimas"].me
 promedio_antes_txt = "{:,.0f}".format(promedio_antes).replace(",", ".")
 promedio_despues_txt = "{:,.0f}".format(promedio_despues).replace(",", ".")
 
-fig6 = px.bar(por_anio_total, x="anio", y="victimas", color="Período", text_auto=True,
+fig6 = px.bar(por_anio_total, x="anio", y="victimas", color="Período", text_auto=",d",
               title="Víctimas por año en toda la ciudad")
 fig6.update_layout(xaxis_title="Año", yaxis_title="Víctimas", title_x=0.5, separators=",.")
 fig6.update_xaxes(dtick=1)
 
-tab_tiempo.write("Lectura descriptiva: no mide el efecto de las cámaras.")
+tab_tiempo.write("Lectura descriptiva: no mide el efecto de las cámaras. Esta pestaña no usa el filtro de período, porque necesita los años de antes de las cámaras (2015-2018).")
+tab_tiempo.write("Entre 2015-2018 y 2022-2025 las víctimas cambiaron **{} %** cerca de las cámaras y **{} %** en el resto de la ciudad.".format(cambio_cerca_txt, cambio_resto_txt))
 tab_tiempo.plotly_chart(fig5, width="stretch")
 tab_tiempo.write("Promedio anual: **{}** víctimas en 2015-2018 y **{}** en 2019-2025.".format(promedio_antes_txt, promedio_despues_txt))
 tab_tiempo.plotly_chart(fig6, width="stretch")
@@ -277,9 +303,11 @@ col10.metric("Motociclistas en esos puntos", "{} %".format(motos_500_txt))
 tab_radio.write("Con un alcance de 500 m, las víctimas cerca de una cámara pasan de {} % a {} % y los puntos críticos sin cámara bajan de {} a {}. La conclusión se mantiene: la mayoría de las víctimas sigue fuera de la red.".format(
     pct_300_txt, pct_500_txt, puntos_300, puntos_500))
 
-tab_alcance.write("- Se mide contra las cámaras actuales de la ciudad, que incluyen 9 anunciadas en agosto de 2026. No hay fechas de instalación para el resto.")
+tab_alcance.write("- Se mide contra las cámaras registradas: la capa oficial de la Secretaría (febrero de 2024) más las 18 cámaras anunciadas en agosto de 2026, que están en 9 ubicaciones. No hay fechas de instalación y pudo faltar alguna cámara instalada entre 2024 y 2026.")
 tab_alcance.write("- La distancia es en línea recta y se toma contra la cámara más cercana.")
-tab_alcance.write("- Un punto crítico es un cuadro de 300 m dentro de los 50 con más víctimas en 2019-2025. Entre 2019-2022 y 2023-2025 coinciden 24 de los 50.")
+tab_alcance.write("- Un punto crítico es un cuadro de 300 m dentro de los 50 con más víctimas según la selección (sin filtros: 2019-2025). Entre 2019-2022 y 2023-2025 coinciden 24 de los 50.")
 tab_alcance.write("- Los siniestros sin coordenadas (todos de 2015 a 2020) no se incluyen, por lo que los primeros años quedan con menos víctimas.")
 tab_alcance.write("- La evolución en el tiempo es descriptiva y no prueba que las cámaras sean la causa del cambio.")
 tab_alcance.write("- Con períodos cortos o un solo tipo de víctima, las cifras se calculan con pocos casos y varían mucho.")
+tab_alcance.write("- La población del DANE es la que vive en cada localidad, no la que pasa por ella.")
+tab_alcance.caption("Fuentes: Secretaría Distrital de Movilidad, Anuario de Siniestralidad Vial (Datos Abiertos Bogotá, licencia CC BY-SA 4.0) · Fuente: Departamento Administrativo Nacional de Estadística: www.dane.gov.co · Secretaría Distrital de Movilidad, capa de Cámaras Salvavidas (ArcGIS) · Alcaldía de Bogotá, ubicaciones de las nuevas Cámaras Salvavidas 2026.")
