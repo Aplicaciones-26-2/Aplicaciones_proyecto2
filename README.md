@@ -5,10 +5,10 @@ Proyecto 2 │ DATA-1002 Aplicaciones en Ciencia de Datos │ Universidad de los
 **Miembros del grupo 8:** 
 
 - Kiary Cardenas Castro
-- Jose Santos Cobos
+- Jose Alexander Santos Cobos
 
 
-**Dashboard:** [link del dashboard]
+**Dashboard:** https://aplicacionesproyecto2.streamlit.app/
 
 **Presentación:** `reports/presentacion.pdf`
 
@@ -178,7 +178,7 @@ Todos los indicadores del dashboard se recalculan con los filtros (años, tipo d
 
 - `data/raw`: datos originales, sin cambios.
 - `data/processed`: tablas limpias que salen de los notebooks.
-- `notebooks`: el análisis, en orden del 01 al 07.
+- `notebooks`: el análisis, en orden del 01 al 08.
 - `src`: el dashboard (`dashboard_streamlit.py`) y el script que pasa el Excel 2024 a `.csv.gz`.
 - `outputs`: carpetas para gráficas y tablas (por ahora vacías; las gráficas están en el notebook 07 y en el dashboard).
 - `reports`: la presentación.
