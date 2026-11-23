@@ -77,7 +77,7 @@ Links:
 - **Cámaras nuevas:** la Alcaldía publicó los cruces, no las coordenadas. Las calculamos nosotros (ver más abajo).
 - **Población:** es la gente que vive en cada localidad, no la que pasa por ella. Es una proyección y empieza en 2018.
 
-### Licencias y cómo citar las fuentes
+### Licencias
 - **SIGAT:** Secretaría Distrital de Movilidad, Anuario de Siniestralidad Vial, publicado en Datos Abiertos Bogotá con licencia Creative Commons Atribución-CompartirIgual 4.0 (CC BY-SA 4.0). Los archivos de `data/processed` salen de estos datos, así que los compartimos con la misma licencia.
 - **Población:** Fuente: Departamento Administrativo Nacional de Estadística: www.dane.gov.co. Proyecciones de población de Bogotá por localidad 2018-2035. Los términos de uso del DANE permiten usar y transformar la información si se cita así.
 - **Cámaras Salvavidas:** Secretaría Distrital de Movilidad, capa "Camaras_Salvavidas_5Feb2020" de ArcGIS, consultada el 21 de noviembre de 2026. La capa no dice qué licencia tiene; por eso citamos la fuente y la fecha de consulta.
