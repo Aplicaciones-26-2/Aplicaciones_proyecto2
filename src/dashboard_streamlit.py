@@ -114,7 +114,7 @@ nombres = en_top50.groupby(victimas_camaras_cuadro).agg(
     localidad=("Localidad", lambda x: x.mode()[0]),
 ).reset_index()
 top50 = top50.merge(nombres, on=cuadros_nombre, how="left", validate="1:1")
-# Las direcciones del SIGAT traen "AV AVENIDA" repetido y un "02" al final; lo quitamos para que se lean mejor
+
 top50[cuadros_dir] = top50[cuadros_dir].str.replace("AV AVENIDA", "AV").str.replace(" 02", "").str.strip()
 
 puntos_sin = top50[top50[cuadros_dist] > 300]
@@ -147,12 +147,11 @@ tab_resumen.write("3. En esos puntos, **{} %** de las víctimas son motociclista
 g1 = pd.DataFrame([["≤ 300 m", pct_cerca], ["> 300 m", pct_lejos]],
                   columns=["zona", "pct"])
 
-# labels pone nombres en español en el cuadro que sale al pasar el mouse
 fig1 = px.bar(g1, x="zona", y="pct", text_auto=".1f", color="zona",
               color_discrete_map={"≤ 300 m": "#2CA02C", "> 300 m": "#D62728"},
               labels={"zona": "Distancia", "pct": "% de las víctimas"},
               title="{} % de las víctimas ocurrió cerca de una cámara".format(pct_cerca_txt))
-# title_xanchor="center" deja el título centrado; sin eso empieza en la mitad y se corta si es largo
+
 fig1.update_layout(yaxis_title="% de las víctimas", showlegend=False, title_x=0.5, title_xanchor="center",
                    xaxis_title="Distancia a la cámara más cercana", separators=",.")
 tab_resumen.plotly_chart(fig1, width="stretch")
