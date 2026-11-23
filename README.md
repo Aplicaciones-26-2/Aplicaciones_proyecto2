@@ -9,6 +9,7 @@ Proyecto 2 · DATA-1002 Aplicaciones en Ciencia de Datos · Universidad de los A
 
 
 **Dashboard:** [link del dashboard]
+
 **Presentación:** `reports/presentacion.pdf`
 
 En pocas palabras: analizamos los muertos y heridos en siniestros viales de Bogotá entre 2019 y 2025 y los comparamos con la ubicación de las Cámaras Salvavidas. De los 50 lugares con más víctimas, 34 no tienen una cámara registrada a 300 metros o menos. Proponemos que la Secretaría Distrital de Movilidad revise primero esos puntos cuando decida dónde poner las próximas cámaras.
@@ -187,7 +188,7 @@ El Excel 2024 del SIGAT pesa 121 MB y GitHub no deja subir archivos de más de 1
 ## 7. ¿Cómo correr el proyecto?
 
 1. `git clone https://github.com/Aplicaciones-26-2/Aplicaciones_proyecto2.git`
-2. `pip install -r requirements.txt` (Python 3.11 o más reciente)
+2. `pip install -r requirements.txt` (Python 3.12 o más reciente)
 3. Correr los notebooks en orden, del 01 al 07. El 01b no hace falta: la capa de cámaras ya está guardada.
 4. Desde la carpeta principal del repo: `streamlit run src/dashboard_streamlit.py`
 
@@ -197,11 +198,17 @@ El Excel 2024 del SIGAT pesa 121 MB y GitHub no deja subir archivos de más de 1
 Todo es de 2019 a 2025, salvo el antes y después. Las gráficas están en el dashboard y en el notebook 07.
 
 Víctimas: 138.178 muertos y heridos (unos 54 por día); 3.504 murieron.
+
 Cerca de una cámara: solo el 8,8 % de las víctimas ocurrió a 300 m o menos de una cámara (17,6 % con 500 m). Las cámaras sí están en zonas con muchas víctimas, pero son pocas para todos los puntos críticos.
+
 Puntos críticos: 34 de los 50 cuadros con más víctimas no tienen una cámara registrada cerca (25 de 50 con 500 m). Ahí hubo 7.114 víctimas y 210 muertos. El primero es la avenida de Las Américas con carrera 53: 260 víctimas y sin cámara.
+
 Cámaras nuevas de 2026: llegan a 4 de los 50 puntos críticos. Sin ellas serían 38 sin cámara; con ellas, 34.
+
 Quiénes y cuándo: en los 34 puntos, el 50,2 % de las víctimas son motociclistas (46,4 % en toda la ciudad) y el 44,6 % fue de noche o de madrugada.
+
 Localidades: Los Mártires tiene la tasa más alta (817,5 víctimas por 100.000 habitantes al año) y ninguna cámara.
+
 Antes y después: entre 2015-2018 y 2022-2025 las víctimas subieron 40,2 % cerca de las cámaras de la capa oficial y 48,3 % en el resto. Es una comparación descriptiva: no prueba que las cámaras funcionen.
 
 Recomendación. Que la Secretaría incluya estos 34 puntos en el próximo estudio técnico para ubicar cámaras, empezando por los 16 que se repiten en 2019-2022 y 2023-2025. El siguiente paso es medir la velocidad en esos puntos y conseguir la fecha de instalación de cada cámara.
@@ -209,22 +216,37 @@ Recomendación. Que la Secretaría incluya estos 34 puntos en el próximo estudi
 ---
 
 ## 9. Limitaciones
+
 El SIGAT solo trae los siniestros que se reportan.
+
 Quitamos los siniestros sin coordenadas y una coordenada de relleno; en 2019-2025 quedó el 98,7 % de las víctimas.
+
 La capa de cámaras llega a febrero de 2024, así que pudo faltar alguna (por eso decimos "registrada"). Tampoco sabemos desde cuándo funciona cada cámara ni si estaba prendida.
+
 Las coordenadas de las cámaras nuevas son aproximadas y la distancia es en línea recta.
+
 Los resultados dependen del radio de 300 m y del tamaño de los cuadros; por eso repetimos el análisis con 500 m.
+
 No tenemos la causa de cada siniestro ni el tráfico de cada vía.
+
 La población es la que vive en cada localidad, no la que pasa por ella.
+
 El antes y después es descriptivo y no mide el efecto de las cámaras.
 
 ---
 
 ## 10. Fuentes de contexto
+
 Ubicaciones de las 18 cámaras nuevas y cómo se escogieron (Alcaldía de Bogotá, 25 de agosto de 2026): https://bogota.gov.co/mi-ciudad/movilidad/ubicaciones-de-las-nuevas-camaras-salvavidas-de-bogota-2026
+
 129 cámaras y 42 vidas al año (Semana, agosto de 2026): https://www.semana.com/vehiculos/articulo/en-donde-quedan-todas-las-camaras-de-fotomultas-en-bogota/202640/
+
 29 vidas al año (Alcaldía de Bogotá): https://bogota.gov.co/mi-ciudad/movilidad/los-mitos-y-verdades-de-las-camaras-de-fotodeteccion-en-bogota
+
 Revisión nacional de las cámaras (Vanguardia, agosto de 2026): https://www.vanguardia.com/colombia/2026/08/23/de-la-espriella-ordena-revisar-las-fotomultas-en-colombia-cuestiona-su-uso-para-recaudar-dinero/
+
 El Concejo pide cifras por punto (Noticias RCN, septiembre de 2026): https://www.noticiasrcn.com/colombia/casi-nueve-de-cada-diez-pesos-recaudados-por-las-camaras-salvavidas-en-bogota-provienen-de-una-misma-infraccion-1060641
+
 Aumento de muertes en 2026 (Enter.co): https://www.enter.co/?p=586129
+
 Resultados del Anuario de Siniestralidad Vial 2024 (La República, abril de 2025): https://www.larepublica.co/economia/bogota-tuvo-la-tasa-de-mortalidad-mas-baja-en-siniestros-viales-en-2024-cerro-en-7-1-4106829

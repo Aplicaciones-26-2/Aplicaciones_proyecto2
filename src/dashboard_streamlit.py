@@ -66,13 +66,14 @@ victimas_camaras_filtradas = victimas_camaras_tipo_franja[
     (victimas_camaras_tipo_franja[victimas_camaras_anio] <= anios[1])]
 
 n_filtradas_txt = "{:,}".format(len(victimas_camaras_filtradas)).replace(",", ".")
-n_total_txt = "{:,}".format(len(victimas_camaras)).replace(",", ".")
-st.sidebar.write("Víctimas en la selección: **{}** de {}".format(n_filtradas_txt, n_total_txt))
+# El total es solo de 2019 a 2025, porque el filtro de años empieza en 2019
+n_total_txt = "{:,}".format(len(victimas_camaras[victimas_camaras[victimas_camaras_anio] >= anio_min])).replace(",", ".")
+st.sidebar.write("Víctimas en la selección: **{}** de {} ({}-{})".format(n_filtradas_txt, n_total_txt, anio_min, anio_max))
 
 st.title("¿Dónde poner las próximas Cámaras Salvavidas?")
 st.caption("Pregunta: ¿Cuáles son los puntos de Bogotá con más muertos y heridos en siniestros viales entre 2019 y 2025 que no tienen una Cámara Salvavidas registrada a menos de 300 metros?")
 st.write("Datos: siniestros viales 2019–2025 (SIGAT, Secretaría de Movilidad) · cámaras registradas: capa oficial de la Secretaría (febrero de 2024) más las 18 anunciadas en agosto de 2026 · población por localidad (DANE).")
-st.write("Analizamos siete años de siniestros viales en Bogotá. De los 50 lugares con más muertos y heridos, 34 no tienen una cámara a menos de 300 metros, y la mitad de las víctimas en esos lugares son motociclistas. Por eso recomendamos que las próximas cámaras empiecen por esos puntos.")
+st.write("Analizamos siete años de siniestros viales en Bogotá. De los 50 lugares con más muertos y heridos, 34 no tienen una cámara a menos de 300 metros, y la mitad de las víctimas en esos lugares son motociclistas. Por eso recomendamos que la Secretaría revise primero esos puntos al decidir dónde van las próximas cámaras.")
 
 if len(victimas_camaras_filtradas) == 0:
     st.warning("No hay víctimas con la selección actual. Amplíe el período o agregue tipos y franjas.")
@@ -113,6 +114,8 @@ nombres = en_top50.groupby(victimas_camaras_cuadro).agg(
     localidad=("Localidad", lambda x: x.mode()[0]),
 ).reset_index()
 top50 = top50.merge(nombres, on=cuadros_nombre, how="left", validate="1:1")
+# Las direcciones del SIGAT traen "AV AVENIDA" repetido y un "02" al final; lo quitamos para que se lean mejor
+top50[cuadros_dir] = top50[cuadros_dir].str.replace("AV AVENIDA", "AV").str.replace(" 02", "").str.strip()
 
 puntos_sin = top50[top50[cuadros_dist] > 300]
 vic_sin = victimas_camaras_filtradas[victimas_camaras_filtradas[victimas_camaras_cuadro].isin(puntos_sin[cuadros_nombre])]
@@ -144,10 +147,13 @@ tab_resumen.write("3. En esos puntos, **{} %** de las víctimas son motociclista
 g1 = pd.DataFrame([["≤ 300 m", pct_cerca], ["> 300 m", pct_lejos]],
                   columns=["zona", "pct"])
 
+# labels pone nombres en español en el cuadro que sale al pasar el mouse
 fig1 = px.bar(g1, x="zona", y="pct", text_auto=".1f", color="zona",
               color_discrete_map={"≤ 300 m": "#2CA02C", "> 300 m": "#D62728"},
+              labels={"zona": "Distancia", "pct": "% de las víctimas"},
               title="{} % de las víctimas ocurrió cerca de una cámara".format(pct_cerca_txt))
-fig1.update_layout(yaxis_title="% de las víctimas", showlegend=False, title_x=0.5,
+# title_xanchor="center" deja el título centrado; sin eso empieza en la mitad y se corta si es largo
+fig1.update_layout(yaxis_title="% de las víctimas", showlegend=False, title_x=0.5, title_xanchor="center",
                    xaxis_title="Distancia a la cámara más cercana", separators=",.")
 tab_resumen.plotly_chart(fig1, width="stretch")
 
@@ -179,9 +185,10 @@ g2["Punto"] = g2[cuadros_puesto].astype(str) + ". " + g2[cuadros_dir]
 fig2 = px.bar(g2, x=cuadros_nvict, y="Punto", color="Cámara", orientation="h",
               color_discrete_map={"Con cámara": "#2CA02C", "Sin cámara": "#D62728"},
               category_orders={"Punto": g2["Punto"].tolist()},
+              labels={cuadros_nvict: "Víctimas"},
               title="{} de los 10 puntos con más víctimas no tienen cámara".format((g2["Cámara"] == "Sin cámara").sum()))
 fig2.update_yaxes(autorange="reversed")
-fig2.update_layout(title_x=0.5, xaxis_title="Víctimas", yaxis_title="", separators=",.")
+fig2.update_layout(title_x=0.5, title_xanchor="center", xaxis_title="Víctimas", yaxis_title="", separators=",.")
 
 tab_puntos.subheader("{} de los 50 puntos con más víctimas no tienen una cámara a 300 m o menos".format(len(puntos_sin)))
 tab_puntos.write(":red[●] Punto crítico sin cámara · :green[●] Punto crítico con cámara · :blue[●] Cámara de la capa oficial · :orange[●] Cámara nueva de 2026 (el tamaño del punto crítico crece con las víctimas)")
@@ -195,8 +202,9 @@ g3a = vic_sin[victimas_camaras_tipo].value_counts(normalize=True).mul(100).reset
 g3a.columns = ["tipo", "pct"]
 
 fig3a = px.bar(g3a, x="pct", y="tipo", orientation="h", text_auto=".1f",
+               labels={"tipo": "Tipo de persona", "pct": "% de las víctimas"},
                title="Quiénes: {} % son motociclistas".format(pct_motos_txt))
-fig3a.update_layout(xaxis_title="% de las víctimas", title_x=0.5, yaxis_title="", separators=",.")
+fig3a.update_layout(xaxis_title="% de las víctimas", title_x=0.5, title_xanchor="center", yaxis_title="", separators=",.")
 fig3a.update_yaxes(autorange="reversed")
 
 g3b = vic_sin[victimas_camaras_franja].value_counts(normalize=True).reindex(orden).mul(100).reset_index()
@@ -205,8 +213,9 @@ g3b.columns = ["franja", "pct"]
 pct_noche = g3b[g3b["franja"].isin(["Noche (18-23)", "Madrugada (0-5)"])]["pct"].sum()
 pct_noche_txt = "{:.1f}".format(pct_noche).replace(".", ",")
 fig3b = px.bar(g3b, x="franja", y="pct", text_auto=".1f",
+               labels={"franja": "Franja", "pct": "% de las víctimas"},
                title="Cuándo: {} % fue de noche o de madrugada".format(pct_noche_txt))
-fig3b.update_layout(yaxis_title="% de las víctimas", title_x=0.5, xaxis_title="", separators=",.")
+fig3b.update_layout(yaxis_title="% de las víctimas", title_x=0.5, title_xanchor="center", xaxis_title="", separators=",.")
 
 tab_perfil.write("Puntos críticos sin cámara: **{} de 50** · Víctimas en esos puntos: **{}**".format(len(puntos_sin), n_vic_sin_txt))
 col5, col6 = tab_perfil.columns(2)
@@ -220,15 +229,17 @@ loc_top_tasa_txt = "{:.1f}".format(loc_top[localidades_tasa]).replace(".", ",")
 n_loc_sin_camara = int((localidades[localidades_cam] == 0).sum())
 
 fig4a = px.bar(g4, x=localidades_tasa, y=localidades_nombre, orientation="h",
-               title="{} tiene la tasa más alta: {} por 100.000 habitantes".format(loc_top[localidades_nombre].title(), loc_top_tasa_txt))
+               labels={localidades_nombre: "Localidad", localidades_tasa: "Víctimas por 100.000 habitantes al año"},
+               title="{} tiene la tasa más alta ({})".format(loc_top[localidades_nombre].title(), loc_top_tasa_txt))
 fig4a.update_yaxes(autorange="reversed")
 fig4a.update_layout(yaxis_title="", xaxis_title="Víctimas por 100.000 habitantes al año",
-                    title_x=0.5, height=600, separators=",.")
+                    title_x=0.5, title_xanchor="center", height=600, separators=",.")
 
 fig4b = px.bar(g4, x=localidades_cam, y=localidades_nombre, orientation="h",
+               labels={localidades_nombre: "Localidad", localidades_cam: "Cámaras"},
                title="{} localidades no tienen ninguna cámara".format(n_loc_sin_camara))
 fig4b.update_yaxes(autorange="reversed")
-fig4b.update_layout(yaxis_title="", xaxis_title="Cámaras", title_x=0.5, height=600)
+fig4b.update_layout(yaxis_title="", xaxis_title="Cámaras", title_x=0.5, title_xanchor="center", height=600)
 
 tab_loc.write("**{}** tiene la tasa más alta ({} víctimas por 100.000 habitantes al año) y {} cámaras. {} localidades no tienen ninguna cámara.".format(
     loc_top[localidades_nombre].title(), loc_top_tasa_txt, int(loc_top[localidades_cam]), n_loc_sin_camara))
@@ -247,8 +258,6 @@ por_anio = g5.groupby([victimas_camaras_anio, "zona"]).size().unstack(fill_value
 base = por_anio[por_anio.index <= 2018].mean().replace(0, np.nan)
 despues = por_anio[por_anio.index >= 2022].mean()
 cambio = (despues - base) / base * 100
-cambio_cerca_txt = "{:.1f}".format(cambio["Cerca de una cámara"]).replace(".", ",")
-cambio_resto_txt = "{:.1f}".format(cambio["Resto de la ciudad"]).replace(".", ",")
 cambio_cerca_signo = "{:+.1f}".format(cambio["Cerca de una cámara"]).replace(".", ",")
 cambio_resto_signo = "{:+.1f}".format(cambio["Resto de la ciudad"]).replace(".", ",")
 
@@ -256,8 +265,9 @@ indice = (por_anio / base * 100).reset_index()
 indice = indice.melt(id_vars=victimas_camaras_anio, var_name="zona", value_name="indice")
 
 fig5 = px.line(indice, x=victimas_camaras_anio, y="indice", color="zona", markers=True,
+               labels={victimas_camaras_anio: "Año", "indice": "Índice", "zona": "Zona"},
                title="Cambio frente a 2015-2018: {} % cerca de las cámaras y {} % en el resto".format(cambio_cerca_signo, cambio_resto_signo))
-fig5.update_layout(yaxis_title="Índice (promedio 2015-2018 = 100)", xaxis_title="Año", title_x=0.5,
+fig5.update_layout(yaxis_title="Índice (promedio 2015-2018 = 100)", xaxis_title="Año", title_x=0.5, title_xanchor="center",
                    legend_title_text="", separators=",.")
 fig5.update_xaxes(dtick=1)
 fig5.add_hline(y=100, line_dash="dash", line_color="gray")
@@ -274,12 +284,14 @@ promedio_antes_txt = "{:,.0f}".format(promedio_antes).replace(",", ".")
 promedio_despues_txt = "{:,.0f}".format(promedio_despues).replace(",", ".")
 
 fig6 = px.bar(por_anio_total, x="anio", y="victimas", color="Período", text_auto=",d",
+              labels={"anio": "Año", "victimas": "Víctimas"},
               title="Víctimas por año en toda la ciudad")
-fig6.update_layout(xaxis_title="Año", yaxis_title="Víctimas", title_x=0.5, separators=",.")
+# yaxis_tickformat=",d" muestra 20.000 en vez de 20k
+fig6.update_layout(xaxis_title="Año", yaxis_title="Víctimas", title_x=0.5, title_xanchor="center", separators=",.", yaxis_tickformat=",d")
 fig6.update_xaxes(dtick=1)
 
 tab_tiempo.write("Lectura descriptiva: no mide el efecto de las cámaras. Esta pestaña no usa el filtro de período, porque necesita los años de antes de las cámaras (2015-2018).")
-tab_tiempo.write("Entre 2015-2018 y 2022-2025 las víctimas cambiaron **{} %** cerca de las cámaras y **{} %** en el resto de la ciudad.".format(cambio_cerca_txt, cambio_resto_txt))
+tab_tiempo.write("Entre 2015-2018 y 2022-2025 las víctimas cambiaron **{} %** cerca de las cámaras y **{} %** en el resto de la ciudad. Aquí no contamos las 18 cámaras de 2026, porque en esos años todavía no existían.".format(cambio_cerca_signo, cambio_resto_signo))
 tab_tiempo.plotly_chart(fig5, width="stretch")
 tab_tiempo.write("Promedio anual: **{}** víctimas en 2015-2018 y **{}** en 2019-2025. Ojo: en 2015-2018 faltan más siniestros sin coordenadas, por eso esos años se ven más bajos de lo que fueron.".format(promedio_antes_txt, promedio_despues_txt))
 tab_tiempo.plotly_chart(fig6, width="stretch")
